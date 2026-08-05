@@ -8,7 +8,7 @@
       "multiple_categories"
     ],
     "case_status": "no_action",
-    "confidence": 0.2
+    "confidence": 0.25
   },
   "affected_entities": {
     "order_ids": [
@@ -36,16 +36,29 @@
       "78efe838c04bbc568be034082200ac20"
     ],
     "category_names": [
-      "furniture_decor",
-      "bed_bath_table"
+      "bed_bath_table",
+      "furniture_decor"
     ]
   },
   "delivery_analysis": {
-    "delivered_at": null,
-    "estimated_delivery_at": null,
-    "carrier_handoff_at": null,
-    "delivery_variance_hours": null,
-    "seller_handoff_analysis": [],
+    "delivered_at": "2018-05-03 19:11:31",
+    "estimated_delivery_at": "2018-05-22 00:00:00",
+    "carrier_handoff_at": "2018-05-02 14:24:00",
+    "delivery_variance_hours": -436.81,
+    "seller_handoff_analysis": [
+      {
+        "seller_id": "da8622b14eb17ae2831f4ac5b9dab84a",
+        "shipping_limit_at": "2018-05-04 17:30:27",
+        "handoff_variance_hours": -51.11,
+        "late_handoff": false
+      },
+      {
+        "seller_id": "0241d4d5d36f10f80c644447315af0bd",
+        "shipping_limit_at": "2018-05-04 17:30:27",
+        "handoff_variance_hours": -51.11,
+        "late_handoff": false
+      }
+    ],
     "late_handoff_seller_ids": []
   },
   "payment_reconciliation": {

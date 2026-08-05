@@ -6,7 +6,7 @@
       "repeat_customer"
     ],
     "case_status": "action_required",
-    "confidence": 0.2
+    "confidence": 0.3
   },
   "affected_entities": {
     "order_ids": [
@@ -30,7 +30,7 @@
   },
   "delivery_analysis": {
     "delivered_at": null,
-    "estimated_delivery_at": null,
+    "estimated_delivery_at": "2017-11-10 00:00:00",
     "carrier_handoff_at": null,
     "delivery_variance_hours": null,
     "seller_handoff_analysis": [],
