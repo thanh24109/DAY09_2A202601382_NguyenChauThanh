@@ -1,6 +1,6 @@
 {
-  "model": "Alibaba Cloud - qwen-plus",
-  "parameter_size": "Under 10B",
+  "model": "Alibaba Cloud - qwen3-max",
+  "parameter_size": "Dynamic",
   "framework": "Python / pandas / pydantic",
   "runtime": "Python 3.11"
 }

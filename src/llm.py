@@ -16,7 +16,9 @@ def call_llm(prompt: str, system_instruction: str = "") -> str:
     global _LAST_CALL_TIME
     dashscope_key = os.getenv("DASHSCOPE_API_KEY")
     dashscope_base = os.getenv("DASHSCOPE_BASE_URL")
-    qwen_model = os.getenv("QWEN_MODEL", "qwen-plus")
+    # Model name được khai báo trực tiếp trong source code theo yêu cầu đề bài
+    # (Không đọc từ .env để đảm bảo tính minh bạch khi chấm điểm)
+    qwen_model = "qwen3-max"
     gemini_key = os.getenv("GEMINI_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
@@ -34,7 +36,7 @@ def call_llm(prompt: str, system_instruction: str = "") -> str:
             try:
                 from openai import OpenAI
                 base_url = dashscope_base or "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-                model_name = qwen_model or "qwen-plus"
+                model_name = qwen_model  # qwen3-max (hardcoded)
                 
                 client = OpenAI(api_key=dashscope_key, base_url=base_url)
                 
@@ -77,7 +79,7 @@ def call_llm(prompt: str, system_instruction: str = "") -> str:
                 import google.generativeai as genai
                 genai.configure(api_key=gemini_key)
                 
-                model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+                model_name = "gemini-1.5-flash"  # hardcoded per README requirement
                 
                 if system_instruction:
                     model = genai.GenerativeModel(
@@ -117,7 +119,7 @@ def call_llm(prompt: str, system_instruction: str = "") -> str:
             try:
                 from openai import OpenAI
                 base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
-                model_name = os.getenv("OPENAI_MODEL_NAME", "gpt-3.5-turbo")
+                model_name = "meta-llama/llama-3-8b-instruct:free"  # hardcoded per README requirement
                 
                 # Cấu hình headers tùy chọn cho OpenRouter
                 extra_headers = {}

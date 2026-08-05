@@ -56,7 +56,7 @@ class CoordinatorAgent(BaseAgent):
 
         # Step 4: Delivery Agent
         delivery_res = self.delivery_agent.analyze(running_context, datasets)
-        running_context["delivery_analysis"] = delivery_res["delivery_analysis"]
+        running_context["delivery_analysis"] = delivery_res
 
         # Step 5: Policy Agent
         policy_res = self.policy_agent.analyze(running_context, datasets)
