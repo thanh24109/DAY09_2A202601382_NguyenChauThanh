@@ -1,6 +1,8 @@
 {
-  "model": "Alibaba Cloud - qwen3-max",
-  "parameter_size": "Dynamic",
+  "model": "qwen3-8b",
+  "provider": "Alibaba Cloud DashScope",
+  "parameter_size": "8B",
+  "execution_mode": "remote_llm",
   "framework": "Python / pandas / pydantic",
-  "runtime": "Python 3.11"
+  "runtime": "Python 3.11.15"
 }

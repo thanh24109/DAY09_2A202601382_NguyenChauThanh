@@ -23,6 +23,30 @@ class CoordinatorAgent(BaseAgent):
         self.verifier_agent = VerifierAgent()
 
     def analyze(self, case_context: Dict[str, Any], datasets: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+        """Analyze one case without allowing a bad case to abort the full batch."""
+        case_id = case_context.get("case_id", "UNKNOWN")
+        try:
+            if case_context.get("policy_version") != "EC_POLICY_V2":
+                raise ValueError("policy_version must be EC_POLICY_V2")
+            request = case_context.get("customer_request")
+            if not isinstance(request, dict) or not request.get("claimed_order_id"):
+                raise ValueError("customer_request.claimed_order_id is required")
+            return self._analyze(case_context, datasets)
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            return {
+                "output": None,
+                "is_valid": False,
+                "errors": [error],
+                "trace": {
+                    "case_id": case_id,
+                    "steps": {},
+                    "status": "failed",
+                    "errors": [error],
+                },
+            }
+
+    def _analyze(self, case_context: Dict[str, Any], datasets: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
         """Quy trình điều phối phân tích dispute:
         1. Gọi Customer Agent phân tích thông tin khách hàng.
         2. Gọi Order & Product Agent phân tích sản phẩm và gian hàng.
@@ -38,6 +62,7 @@ class CoordinatorAgent(BaseAgent):
         running_context = {
             "case_id": case_id,
             "claimed_order_id": claimed_order_id,
+            "customer_request": case_context.get("customer_request", {}),
             "policy_version": case_context.get("policy_version", "EC_POLICY_V2"),
             "investigation_scope": case_context.get("investigation_scope", {})
         }
@@ -63,7 +88,7 @@ class CoordinatorAgent(BaseAgent):
         running_context["policy_analysis"] = policy_res
 
         # Step 6: Verifier Agent
-        verifier_res = self.verifier_agent.analyze(running_context)
+        verifier_res = self.verifier_agent.analyze(running_context, datasets)
         
         # Ghi nhận log chạy (Trace)
         trace_log = {

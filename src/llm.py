@@ -1,158 +1,147 @@
 import os
 import time
+
 from dotenv import load_dotenv
 
-# Nạp file .env
+
 load_dotenv()
 
-# Biến toàn cục để lưu mốc thời gian của cuộc gọi cuối cùng để tính khoảng chờ tối ưu
 _LAST_CALL_TIME = 0.0
+_LAST_EXECUTION_MODE = None
+_PROVIDER_DISABLED = False
+
+# Single source of truth for both API calls and metadata.json. Every configured
+# model is explicitly at or below the assignment's 10B-parameter limit.
+DASHSCOPE_MODEL = "qwen3-8b"
+OPENAI_MODEL = "meta-llama/llama-3-8b-instruct:free"
+
+
+def get_active_model_metadata() -> dict:
+    if os.getenv("LLM_DISABLED") == "1" or _LAST_EXECUTION_MODE == "fallback":
+        return {
+            "model": "deterministic-local-rules",
+            "provider": "local",
+            "parameter_size": "0 (no LLM)",
+            "execution_mode": "fallback",
+        }
+    if os.getenv("DASHSCOPE_API_KEY"):
+        return {
+            "model": DASHSCOPE_MODEL,
+            "provider": "Alibaba Cloud DashScope",
+            "parameter_size": "8B",
+            "execution_mode": "remote_llm",
+        }
+    if os.getenv("OPENAI_API_KEY"):
+        return {
+            "model": OPENAI_MODEL,
+            "provider": "OpenAI-compatible API",
+            "parameter_size": "8B",
+            "execution_mode": "remote_llm",
+        }
+    return {
+        "model": "deterministic-local-rules",
+        "provider": "local",
+        "parameter_size": "0 (no LLM)",
+        "execution_mode": "fallback",
+    }
+
+
+def _chat_completion(api_key: str, base_url: str, model: str, prompt: str,
+                     system_instruction: str, default_headers=None) -> str:
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        default_headers=default_headers or {},
+    )
+    messages = []
+    if system_instruction:
+        messages.append({"role": "system", "content": system_instruction})
+    messages.append({"role": "user", "content": prompt})
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.0,
+        extra_body={"enable_thinking": False} if model == DASHSCOPE_MODEL else None,
+    )
+    return response.choices[0].message.content.strip()
+
 
 def call_llm(prompt: str, system_instruction: str = "") -> str:
-    """Gọi LLM sử dụng API Key từ .env.
-    Hỗ trợ cả Gemini API và OpenAI API (hoặc các provider tương thích).
-    Nếu không có API Key, tự động fallback về phản hồi giả định (deterministic fallback).
-    """
-    global _LAST_CALL_TIME
+    """Call the configured <=10B model, or use a deterministic local fallback."""
+    global _LAST_CALL_TIME, _LAST_EXECUTION_MODE, _PROVIDER_DISABLED
+
+    if os.getenv("LLM_DISABLED") == "1" or _PROVIDER_DISABLED:
+        _LAST_EXECUTION_MODE = "fallback"
+        return "[FALLBACK] LLM disabled or unavailable; local confidence used."
+
     dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    dashscope_base = os.getenv("DASHSCOPE_BASE_URL")
-    # Model name được khai báo trực tiếp trong source code theo yêu cầu đề bài
-    # (Không đọc từ .env để đảm bảo tính minh bạch khi chấm điểm)
-    qwen_model = "qwen3-max"
-    gemini_key = os.getenv("GEMINI_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
     if dashscope_key:
-        max_retries = 3
-        backoff_delay = 2.0
-        
-        now = time.time()
-        elapsed = now - _LAST_CALL_TIME
-        if elapsed < 1.0:
-            time.sleep(1.0 - elapsed)
-        _LAST_CALL_TIME = time.time()
-
-        for attempt in range(max_retries):
-            try:
-                from openai import OpenAI
-                base_url = dashscope_base or "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-                model_name = qwen_model  # qwen3-max (hardcoded)
-                
-                client = OpenAI(api_key=dashscope_key, base_url=base_url)
-                
-                messages = []
-                if system_instruction:
-                    messages.append({"role": "system", "content": system_instruction})
-                messages.append({"role": "user", "content": prompt})
-                
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    temperature=0.0
-                )
-                return response.choices[0].message.content.strip()
-                
-            except Exception as e:
-                err_str = str(e)
-                if "429" in err_str or "quota" in err_str.lower() or "limit" in err_str.lower() or "rate" in err_str.lower():
-                    if attempt < max_retries - 1:
-                        print(f"[LLM WARNING] DashScope/Qwen quá giới hạn request (429). Thử lại sau {backoff_delay}s... (Lần {attempt + 1}/{max_retries})")
-                        time.sleep(backoff_delay)
-                        backoff_delay *= 2
-                        continue
-                print(f"[LLM WARNING] Lỗi khi call DashScope/Qwen API: {e}. Sử dụng fallback.")
-                break
-
-    elif gemini_key:
-        # Cơ chế tránh vượt ngưỡng 15 RPM (4.1 giây giữa các cuộc gọi) của Free Tier
-        now = time.time()
-        elapsed = now - _LAST_CALL_TIME
-        if elapsed < 4.2:
-            time.sleep(4.2 - elapsed)
-        _LAST_CALL_TIME = time.time()
-
-        max_retries = 3
-        backoff_delay = 5.0
-        
-        for attempt in range(max_retries):
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=gemini_key)
-                
-                model_name = "gemini-1.5-flash"  # hardcoded per README requirement
-                
-                if system_instruction:
-                    model = genai.GenerativeModel(
-                        model_name=model_name,
-                        system_instruction=system_instruction
-                    )
-                else:
-                    model = genai.GenerativeModel(model_name=model_name)
-                    
-                response = model.generate_content(prompt)
-                return response.text.strip()
-                
-            except Exception as e:
-                err_str = str(e)
-                # Nếu bị Rate Limit (429) hoặc vượt Quota, thực hiện retry
-                if "429" in err_str or "quota" in err_str.lower() or "limit" in err_str.lower():
-                    if attempt < max_retries - 1:
-                        print(f"[LLM WARNING] Quá giới hạn request (429). Thử lại sau {backoff_delay}s... (Lần {attempt + 1}/{max_retries})")
-                        time.sleep(backoff_delay)
-                        backoff_delay *= 2
-                        continue
-                print(f"[LLM WARNING] Lỗi khi call Gemini API: {e}. Sử dụng fallback.")
-                break
-            
+        provider = "DashScope/Qwen"
+        api_key = dashscope_key
+        base_url = os.getenv("DASHSCOPE_BASE_URL") or (
+            "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+        )
+        model = DASHSCOPE_MODEL
+        interval = 1.0
+        headers = None
     elif openai_key:
-        max_retries = 3
-        backoff_delay = 5.0
-        
-        # Nhẹ nhàng cách khoảng giữa các cuộc gọi để không spam OpenRouter Free Tier
-        now = time.time()
-        elapsed = now - _LAST_CALL_TIME
-        if elapsed < 2.0:
-            time.sleep(2.0 - elapsed)
-        _LAST_CALL_TIME = time.time()
+        provider = "OpenAI-compatible"
+        api_key = openai_key
+        base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
+        model = OPENAI_MODEL
+        interval = 2.0
+        headers = {}
+        if "openrouter.ai" in (base_url or "").lower():
+            headers = {
+                "HTTP-Referer": (
+                    "https://github.com/thanh24109/"
+                    "DAY09_2A202601382_NguyenChauThanh"
+                ),
+                "X-Title": "Olist Dispute Multi-Agent",
+            }
+    else:
+        _LAST_EXECUTION_MODE = "fallback"
+        return "[FALLBACK] No supported API key; local deterministic confidence used."
 
-        for attempt in range(max_retries):
-            try:
-                from openai import OpenAI
-                base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
-                model_name = "meta-llama/llama-3-8b-instruct:free"  # hardcoded per README requirement
-                
-                # Cấu hình headers tùy chọn cho OpenRouter
-                extra_headers = {}
-                if "openrouter.ai" in (base_url or "").lower():
-                    extra_headers = {
-                        "HTTP-Referer": "https://github.com/thanh24109/DAY09_2A202601382_NguyenChauThanh",
-                        "X-Title": "Olist Dispute Multi-Agent"
-                    }
+    elapsed = time.time() - _LAST_CALL_TIME
+    if elapsed < interval:
+        time.sleep(interval - elapsed)
+    _LAST_CALL_TIME = time.time()
 
-                client = OpenAI(api_key=openai_key, base_url=base_url, default_headers=extra_headers)
-                
-                messages = []
-                if system_instruction:
-                    messages.append({"role": "system", "content": system_instruction})
-                messages.append({"role": "user", "content": prompt})
-                
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    temperature=0.0
+    backoff_delay = 2.0
+    for attempt in range(3):
+        try:
+            result = _chat_completion(
+                api_key,
+                base_url,
+                model,
+                prompt,
+                system_instruction,
+                headers,
+            )
+            _LAST_EXECUTION_MODE = "remote_llm"
+            return result
+        except Exception as exc:
+            message = str(exc)
+            rate_limited = any(
+                marker in message.lower()
+                for marker in ("429", "quota", "limit", "rate")
+            )
+            if rate_limited and attempt < 2:
+                print(
+                    f"[LLM WARNING] {provider} rate limited; retrying in "
+                    f"{backoff_delay:.0f}s ({attempt + 1}/3)."
                 )
-                return response.choices[0].message.content.strip()
-                
-            except Exception as e:
-                err_str = str(e)
-                if "429" in err_str or "quota" in err_str.lower() or "limit" in err_str.lower() or "rate" in err_str.lower():
-                    if attempt < max_retries - 1:
-                        print(f"[LLM WARNING] OpenRouter/OpenAI quá giới hạn request (429). Thử lại sau {backoff_delay}s... (Lần {attempt + 1}/{max_retries})")
-                        time.sleep(backoff_delay)
-                        backoff_delay *= 2
-                        continue
-                print(f"[LLM WARNING] Lỗi khi call OpenAI/OpenRouter API: {e}. Sử dụng fallback.")
-                break
+                time.sleep(backoff_delay)
+                backoff_delay *= 2
+                continue
+            print(f"[LLM WARNING] {provider} call failed: {exc}. Using fallback.")
+            _PROVIDER_DISABLED = True
+            break
 
-    # Fallback nếu không có API Key hoặc gặp lỗi call
-    return "[FALLBACK] API Key không khả dụng hoặc cấu hình sai. Trả về phân tích cục bộ."
+    _LAST_EXECUTION_MODE = "fallback"
+    return "[FALLBACK] LLM unavailable; local deterministic confidence used."

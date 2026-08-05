@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+import platform
 import pandas as pd
 from pathlib import Path
 
@@ -9,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.data_loader import OlistDataLoader, INPUT_DIR
 from src.agents.coordinator_agent import CoordinatorAgent
+from src.llm import get_active_model_metadata
+from src.schemas import CaseOutput
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
@@ -16,11 +19,14 @@ LOGGING_DIR = BASE_DIR / "logging"
 DOCS_DIR = BASE_DIR / "docs"
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     print("=== KHỞI CHẠY MULTI-AGENT DISPUTE RESOLUTION PIPELINE ===")
     
     # Tạo các thư mục nếu chưa tồn tại
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     LOGGING_DIR.mkdir(parents=True, exist_ok=True)
+    prepare_output_dir()
     
     # 1. Nạp dữ liệu
     loader = OlistDataLoader()
@@ -119,25 +125,22 @@ def main():
             trace_file.write(json.dumps(trace, ensure_ascii=False) + "\n")
             
     print(f"\nĐã hoàn thành phân tích. Kết quả: {statistics['valid']} PASS, {statistics['invalid']} FAIL.")
+
+    if statistics["total"] != 50 or statistics["valid"] != 50:
+        raise RuntimeError(
+            "Pipeline did not produce 50 valid outputs; refusing to package "
+            f"partial results ({statistics['valid']}/50 valid)."
+        )
     
     # 3. Ghi file metadata.json
-    active_model = "Gemini 3.5 Flash"
-    if os.getenv("DASHSCOPE_API_KEY"):
-        active_model = f"Alibaba Cloud - {os.getenv('QWEN_MODEL', 'qwen-plus')}"
-    elif os.getenv("OPENAI_API_KEY"):
-        active_model = f"OpenRouter - {os.getenv('OPENAI_MODEL_NAME', 'google/gemma-2-9b-it:free')}"
-    elif os.getenv("GEMINI_API_KEY"):
-        active_model = f"Gemini - {os.getenv('GEMINI_MODEL_NAME', 'gemini-1.5-flash')}"
-
     metadata = {
-        "model": active_model,
-        "parameter_size": "Under 10B" if "lite" in active_model or "9b" in active_model or "8b" in active_model or "plus" in active_model or "turbo" in active_model else "Dynamic",
+        **get_active_model_metadata(),
         "framework": "Python / pandas / pydantic",
-        "runtime": "Python 3.11"
+        "runtime": f"Python {platform.python_version()}"
     }
     with open(LOGGING_DIR / "metadata.json", "w", encoding="utf-8") as meta_f:
         json.dump(metadata, meta_f, indent=2, ensure_ascii=False)
-    print(f"[OK] Đã ghi file metadata.json (Model: {active_model})")
+    print(f"[OK] Đã ghi file metadata.json (Model: {metadata['model']})")
     
     # 4. Ghi file kết quả results.md
     generate_results_report(statistics, results_summary)
@@ -146,16 +149,35 @@ def main():
     # 5. Tạo file nén output.zip chứa đúng 50 JSON
     create_output_zip()
 
+def prepare_output_dir():
+    """Remove only generated case JSON files, preventing stale-run artifacts."""
+    if OUTPUT_DIR.resolve().parent != BASE_DIR.resolve():
+        raise RuntimeError("Unsafe output directory")
+    for path in OUTPUT_DIR.glob("EC_*.json"):
+        if path.is_file():
+            path.unlink()
+
+
 def create_output_zip():
     import zipfile
     zip_path = BASE_DIR / "output.zip"
     print(f"\nĐang tạo file nén {zip_path.name}...")
-    count = 0
+    expected_names = [f"EC_{i:03d}.json" for i in range(1, 51)]
+    actual_names = sorted(path.name for path in OUTPUT_DIR.glob("*.json"))
+    if actual_names != expected_names:
+        raise RuntimeError(
+            "output/ must contain exactly EC_001.json through EC_050.json"
+        )
+
+    for name in expected_names:
+        with open(OUTPUT_DIR / name, "r", encoding="utf-8") as output_file:
+            CaseOutput.model_validate(json.load(output_file))
+
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_f:
-        for file in OUTPUT_DIR.glob("EC_*.json"):
+        for name in expected_names:
+            file = OUTPUT_DIR / name
             zip_f.write(file, arcname=file.name)
-            count += 1
-    print(f"[OK] Đã nén thành công {zip_path.name} (chứa đúng {count} file JSON)")
+    print(f"[OK] Đã nén thành công {zip_path.name} (chứa đúng 50 file JSON)")
 
 def generate_results_report(stats, summaries):
     report_content = f"""# BÁO CÁO KẾT QUẢ THỰC HIỆN DỰ ÁN

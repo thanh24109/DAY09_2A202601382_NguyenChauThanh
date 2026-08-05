@@ -8,7 +8,7 @@
       "multiple_categories"
     ],
     "case_status": "action_required",
-    "confidence": 0.35
+    "confidence": 0.85
   },
   "affected_entities": {
     "order_ids": [
@@ -36,8 +36,8 @@
       "a0b7d5a992ccda646f2d34e418fff5a0"
     ],
     "category_names": [
-      "furniture_decor",
-      "bed_bath_table"
+      "bed_bath_table",
+      "furniture_decor"
     ]
   },
   "delivery_analysis": {

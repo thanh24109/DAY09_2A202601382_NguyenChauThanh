@@ -82,6 +82,7 @@ class VerifierAgent(BaseAgent):
 
         # 3. Xác thực bằng Pydantic Schema để phát hiện lỗi kiểu dữ liệu
         try:
+            self._validate_evidence_sources(evidence_ids, datasets)
             validated_output = CaseOutput(**final_output)
             # Trả về dictionary đã xác thực thành công
             return {
@@ -95,3 +96,36 @@ class VerifierAgent(BaseAgent):
                 "output": final_output,
                 "errors": [str(e)]
             }
+
+    @staticmethod
+    def _validate_evidence_sources(evidence_ids: List[str], datasets: Dict[str, Any]) -> None:
+        """Reject evidence that cannot be derived directly from the source CSVs."""
+        if datasets is None:
+            raise ValueError("datasets are required for evidence verification")
+
+        for evidence_id in evidence_ids:
+            kind, value = evidence_id.split(":", 1)
+            if kind == "order":
+                exists = datasets["orders"]["order_id"].eq(value).any()
+            elif kind == "item":
+                order_id, item_id = value.rsplit(":", 1)
+                rows = datasets["order_items"]
+                exists = (
+                    rows["order_id"].eq(order_id)
+                    & rows["order_item_id"].astype(str).eq(item_id)
+                ).any()
+            elif kind == "payment":
+                order_id, sequence = value.rsplit(":", 1)
+                rows = datasets["order_payments"]
+                exists = (
+                    rows["order_id"].eq(order_id)
+                    & rows["payment_sequential"].astype(str).eq(sequence)
+                ).any()
+            elif kind == "seller":
+                exists = datasets["sellers"]["seller_id"].eq(value).any()
+            elif kind == "policy":
+                exists = bool(value)
+            else:
+                exists = False
+            if not exists:
+                raise ValueError(f"Evidence does not exist in source data: {evidence_id}")

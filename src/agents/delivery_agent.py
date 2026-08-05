@@ -48,7 +48,7 @@ class DeliveryAgent(BaseAgent):
 
         if not items.empty and carrier_handoff_at_str:
             t_carrier_handoff = pd.to_datetime(carrier_handoff_at_str)
-            sellers = items["seller_id"].unique()
+            sellers = items["seller_id"].unique()[:3]
             
             for seller_id in sellers:
                 seller_items = items[items["seller_id"] == seller_id]

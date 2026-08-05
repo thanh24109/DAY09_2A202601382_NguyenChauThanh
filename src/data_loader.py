@@ -19,6 +19,37 @@ CSV_FILES = [
     "product_category_name_translation.csv"
 ]
 
+REQUIRED_COLUMNS = {
+    "olist_customers_dataset.csv": {"customer_id", "customer_unique_id"},
+    "olist_geolocation_dataset.csv": {"geolocation_zip_code_prefix"},
+    "olist_order_items_dataset.csv": {
+        "order_id", "order_item_id", "product_id", "seller_id",
+        "shipping_limit_date", "price", "freight_value"
+    },
+    "olist_order_payments_dataset.csv": {
+        "order_id", "payment_sequential", "payment_type", "payment_value"
+    },
+    "olist_order_reviews_dataset.csv": {"review_id", "order_id"},
+    "olist_orders_dataset.csv": {
+        "order_id", "customer_id", "order_status",
+        "order_delivered_carrier_date", "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+    },
+    "olist_products_dataset.csv": {"product_id", "product_category_name"},
+    "olist_sellers_dataset.csv": {"seller_id"},
+    "product_category_name_translation.csv": {
+        "product_category_name", "product_category_name_english"
+    },
+}
+
+
+def _validate_dataframe(csv_file: str, df: pd.DataFrame) -> None:
+    if df.empty:
+        raise ValueError(f"{csv_file} is empty")
+    missing = REQUIRED_COLUMNS[csv_file] - set(df.columns)
+    if missing:
+        raise ValueError(f"{csv_file} missing columns: {sorted(missing)}")
+
 def check_data_files():
     print("=== CHECKING OLIST DATASET CSVs ===")
     csv_stats = {}
@@ -31,6 +62,7 @@ def check_data_files():
         
         try:
             df = pd.read_csv(filepath)
+            _validate_dataframe(csv_file, df)
             csv_stats[csv_file] = {
                 "status": "OK",
                 "rows": len(df),
@@ -67,6 +99,14 @@ def check_input_cases():
             claimed_order_id = data.get("customer_request", {}).get("claimed_order_id")
             policy_version = data.get("policy_version")
             
+            expected_case_id = f"EC_{i:03d}"
+            if case_id != expected_case_id:
+                raise ValueError(f"case_id must be {expected_case_id}")
+            if not claimed_order_id:
+                raise ValueError("customer_request.claimed_order_id is required")
+            if policy_version != "EC_POLICY_V2":
+                raise ValueError("policy_version must be EC_POLICY_V2")
+
             json_stats["cases"].append({
                 "filename": filename,
                 "case_id": case_id,
@@ -89,7 +129,11 @@ class OlistDataLoader:
         print("\nLoading all CSV datasets into memory...")
         for csv_file in CSV_FILES:
             name = csv_file.replace("olist_", "").replace("_dataset.csv", "").replace(".csv", "")
-            self.datasets[name] = pd.read_csv(self.data_dir / csv_file)
+            filepath = self.data_dir / csv_file
+            if not filepath.exists():
+                raise FileNotFoundError(f"Missing required dataset: {filepath}")
+            self.datasets[name] = pd.read_csv(filepath)
+            _validate_dataframe(csv_file, self.datasets[name])
             print(f"Loaded '{name}': {len(self.datasets[name]):,} rows")
         return self.datasets
 

@@ -55,5 +55,7 @@ class OrderProductAgent(BaseAgent):
             "item_ids": item_ids[:5],
             "seller_ids": seller_ids[:3],
             "product_ids": product_ids[:5],
-            "category_names": list(set(category_names))[:5]
+            # dict.fromkeys preserves CSV/product order, unlike set(), so repeated
+            # pipeline runs produce byte-for-byte stable output.
+            "category_names": list(dict.fromkeys(category_names))[:5]
         }

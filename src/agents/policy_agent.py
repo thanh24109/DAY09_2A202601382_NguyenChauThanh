@@ -92,13 +92,19 @@ class PolicyAgent(BaseAgent):
             primary_action = "explain_valid_split_payment"
             root_cause_code = "MULTIPLE_PAYMENTS_RECONCILED"
 
-        else:
+        elif delivery_variance is not None and not is_late_delivery and reconciled:
             primary_issue = "unsupported_late_claim"
             responsible_party_type = "none"
             responsible_party_id = "none"
             recommended_refund_brl = 0.0
             primary_action = "reject_late_refund"
             root_cause_code = "DELIVERY_WITHIN_ESTIMATE"
+
+        else:
+            raise ValueError(
+                f"Order {claimed_order_id} does not match any EC_POLICY_V2 rule "
+                "(delivery/payment data may be missing or unreconciled)."
+            )
 
         # 3. Xác định Secondary Issues (theo đúng thứ tự nghiệp vụ)
         secondary_issues = []
@@ -153,7 +159,12 @@ class PolicyAgent(BaseAgent):
         ranked_causes = [{"cause_code": root_cause_code, "rank": 1}]
         
         responsible_parties = []
-        if responsible_party_type != "none":
+        if primary_issue == "late_delivery_seller":
+            responsible_parties = [
+                {"party_type": "seller", "party_id": seller_id}
+                for seller_id in late_handoff_sellers[:3]
+            ]
+        elif responsible_party_type != "none":
             responsible_parties.append({
                 "party_type": responsible_party_type,
                 "party_id": responsible_party_id
