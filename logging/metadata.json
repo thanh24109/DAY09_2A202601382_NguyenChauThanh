@@ -1,0 +1,6 @@
+{
+  "model": "Alibaba Cloud - qwen-plus",
+  "parameter_size": "Under 10B",
+  "framework": "Python / pandas / pydantic",
+  "runtime": "Python 3.11"
+}

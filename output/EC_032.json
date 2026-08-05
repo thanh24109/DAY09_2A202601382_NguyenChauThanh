@@ -1,0 +1,84 @@
+{
+  "case_id": "EC_032",
+  "case_assessment": {
+    "primary_issue": "unsupported_late_claim",
+    "secondary_issues": [
+      "multi_item_order",
+      "multiple_categories"
+    ],
+    "case_status": "no_action",
+    "confidence": 0.2
+  },
+  "affected_entities": {
+    "order_ids": [
+      "d3782eb2976abf986175941c51364aab"
+    ],
+    "item_ids": [
+      "d3782eb2976abf986175941c51364aab:1",
+      "d3782eb2976abf986175941c51364aab:2"
+    ],
+    "seller_ids": [
+      "76d5af76d0271110f9af36c92573f765"
+    ],
+    "payment_ids": [
+      "d3782eb2976abf986175941c51364aab:1"
+    ]
+  },
+  "customer_context": {
+    "customer_unique_id": "94431ab24129f0060b53a89cfd62462f",
+    "related_order_ids": []
+  },
+  "product_context": {
+    "product_ids": [
+      "a7906a8a69acf5b0cb256882e741896a",
+      "197f7d1d3a8b0bf0c8f0394ff71b574b"
+    ],
+    "category_names": [
+      "construction_tools_lights",
+      "sports_leisure"
+    ]
+  },
+  "delivery_analysis": {
+    "delivered_at": null,
+    "estimated_delivery_at": null,
+    "carrier_handoff_at": null,
+    "delivery_variance_hours": null,
+    "seller_handoff_analysis": [],
+    "late_handoff_seller_ids": []
+  },
+  "payment_reconciliation": {
+    "currency": "BRL",
+    "item_total_brl": 1017.0,
+    "freight_total_brl": 31.64,
+    "expected_total_brl": 1048.64,
+    "payment_total_brl": 1048.64,
+    "difference_brl": 0.0,
+    "reconciled": true,
+    "payment_types": [
+      "credit_card"
+    ]
+  },
+  "root_cause_analysis": {
+    "ranked_causes": [
+      {
+        "cause_code": "DELIVERY_WITHIN_ESTIMATE",
+        "rank": 1
+      }
+    ],
+    "responsible_parties": []
+  },
+  "evidence_ids": [
+    "order:d3782eb2976abf986175941c51364aab",
+    "item:d3782eb2976abf986175941c51364aab:1",
+    "item:d3782eb2976abf986175941c51364aab:2",
+    "payment:d3782eb2976abf986175941c51364aab:1",
+    "policy:DELIVERY_WITHIN_ESTIMATE"
+  ],
+  "financial_resolution": {
+    "currency": "BRL",
+    "recommended_refund_brl": 0.0
+  },
+  "resolution_actions": [
+    "reject_late_refund"
+  ]
+}
