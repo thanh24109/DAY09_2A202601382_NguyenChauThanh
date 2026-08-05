@@ -6,10 +6,10 @@
 
 ---
 
-## 📊 Tổng quan tiến độ chung: 90% / 100%
+## 📊 Tổng quan tiến độ chung: 100% / 100%
 
 ```
-[█████████████████████████████████████████████░░░░░] 90%
+[██████████████████████████████████████████████████] 100%
 ```
 
 | Giai đoạn | Trọng số | Tiến độ hoàn thành | Trạng thái |
@@ -18,7 +18,7 @@
 | **Phase 2: Xây dựng Kiến trúc Multi-Agent** | 35% | 35% | **Hoàn thành** |
 | **Phase 3: Logic Nghiệp vụ & Xử lý Dispute** | 30% | 30% | **Hoàn thành** |
 | **Phase 4: Output, Tracing & Đóng gói** | 15% | 15% | **Hoàn thành** |
-| **Phase 5: Tài liệu & Hoàn thiện báo cáo** | 10% | 0% | Chưa bắt đầu |
+| **Phase 5: Tài liệu & Hoàn thiện báo cáo** | 10% | 10% | **Hoàn thành** |
 
 ---
 
@@ -51,9 +51,9 @@
 - [x] **Task 4.3:** Tạo ra 50 file JSON kết quả đầu ra trong thư mục [output/](file:///E:/LabVin/DAY09_2A202601382_NguyenChauThanh/output) khớp 100% với schema yêu cầu. *(5%)*
 - [x] **Task 4.4:** Nén thư mục `output/` thành file zip để nộp bài (đảm bảo chỉ chứa đúng 50 JSON file và không chứa file thừa). *(3%)*
 
-### Phase 5: Tài liệu & Hoàn thiện báo cáo (Trọng số: 10%)
-- [ ] **Task 5.1:** Hoàn thiện file [architecture.md](file:///E:/LabVin/DAY09_2A202601382_NguyenChauThanh/architecture.md) (sơ đồ agent, vai trò, quyền truy cập và luồng handoff dữ liệu). *(5%)*
-- [ ] **Task 5.2:** Đổi tên và hoàn thiện báo cáo cá nhân từ template [individual_5SoCuoiMHV_HoVaTen.md](file:///E:/LabVin/DAY09_2A202601382_NguyenChauThanh/individual_5SoCuoiMHV_HoVaTen.md) thành `individual_2A202601382_NguyenChauThanh.md` tại root repo. *(5%)*
+### Phase 5: Tài liệu & Hoàn thiện báo cáo (Trọng số: 10%) - [HOÀN THÀNH 10/10%]
+- [x] **Task 5.1:** Hoàn thiện file [architecture.md](file:///E:/LabVin/DAY09_2A202601382_NguyenChauThanh/architecture.md) (sơ đồ agent, vai trò, quyền truy cập và luồng handoff dữ liệu). *(5%)*
+- [x] **Task 5.2:** Đổi tên và hoàn thiện báo cáo cá nhân từ template [individual_5SoCuoiMHV_HoVaTen.md](file:///E:/LabVin/DAY09_2A202601382_NguyenChauThanh/individual_5SoCuoiMHV_HoVaTen.md) thành `individual_2A202601382_NguyenChauThanh.md` tại root repo. *(5%)*
 
 ---
 

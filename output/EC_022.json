@@ -8,7 +8,7 @@
       "repeat_customer"
     ],
     "case_status": "no_action",
-    "confidence": 0.25
+    "confidence": 0.35
   },
   "affected_entities": {
     "order_ids": [
